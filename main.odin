@@ -16,6 +16,7 @@ import "core:fmt"
 import "core:os"
 import "core:path/filepath"
 import "core:runtime"
+import "core:slice"
 import "core:strings"
 import "core:time"
 
@@ -35,13 +36,23 @@ main :: proc() {
 		frees the args when the program exits.
 	*/
 	defer delete(os.args)
-	if len(os.args) != 2 {
-		fmt.println("usage: obf <bf file>")
+	if len(os.args) < 2 || len(os.args) > 4 {
+		fmt.println("usage: obf <bf file> [-r (run) | -k (keep asm)]")
 		os.exit(1)
 	}
 	source_file := os.args[1]
+	run := false
+	keep_asm := false
+	if len(os.args) > 2 {
+		if slice.contains(os.args, "-r") {
+			run = true
+		}
+		if slice.contains(os.args, "-k") {
+			keep_asm = true
+		}
+	}
 	if !os.exists(source_file) {
-		fmt.printf("file %s does not exist", source_file)
+		fmt.printf("file %s does not exist\n", source_file)
 		os.exit(1)
 	}
 	arr_loop := make([dynamic]int, 0)
@@ -87,7 +98,26 @@ main :: proc() {
 		fmt.println("error calling ld")
 		os.exit(1)
 	}
-	fmt.println("done")
+	delete_o_file := fmt.aprintf("%s.o", asm_file_name)
+	defer delete(delete_o_file)
+	delete_o_file_c := strings.clone_to_cstring(delete_o_file)
+	defer delete(delete_o_file_c)
+	_ = libc.remove(delete_o_file_c)
+	if !keep_asm {
+		asm_file_path_c := strings.clone_to_cstring(asm_file_path)
+		defer delete(asm_file_path_c)
+		_ = libc.remove(asm_file_path_c)
+	}
+	if run {
+		run_file := fmt.aprintf("./%s", asm_file_name)
+		defer delete(run_file)
+		run_file_c := strings.clone_to_cstring(run_file)
+		defer delete(run_file_c)
+		if ierr := libc.system(run_file_c); ierr != 0 {
+			fmt.println("error running program")
+			os.exit(1)
+		}
+	}
 }
 
 main_loop :: proc(f: ^File) {

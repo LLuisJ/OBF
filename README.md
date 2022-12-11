@@ -19,13 +19,13 @@ odin build . -out:obf
 
 #### Usage:
 ```
-./obf file.bf
+./obf file.bf [-r (run) | -k (keep asm)]
 ```
-After the compilation there should be three new files in the directory:
+There should be an executable in the current directory now.
 
-- file.asm
-- file.o
-- file
+If you passed -r it will run it automatically.
+
+If you passed -k it will keep the assembly file. Otherwise it will be deleted.
 
 You can simply run the file executable.
 
@@ -34,6 +34,4 @@ The executables don't depend on libc, they only use syscalls, so it should work 
 Btw: BIG thanks to Tsoding for making all those videos about his development of the porth language, since it helped me a lot in understanding assembly
 and compilers in general.
 
-Tsoding Daily (which I watched the most): [Youtube](https://www.youtube.com/@TsodingDaily)
-
-Tsoding Twitch: [Twitch](https://www.twitch.tv/tsoding)
+Tsoding Daily Porth Playlist: [Youtube](https://www.youtube.com/playlist?list=PLpM-Dvs8t0VbMZA7wW9aR3EtBqe2kinu4)
