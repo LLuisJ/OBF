@@ -169,22 +169,12 @@ write_left :: proc(f: ^File) {
 }
 
 write_input :: proc(f: ^File) {
-	write(f, 	"\tmov rax, SYS_READ\n" + 
-				"\tmov rdi, STDIN\n" + 
-				"\tmov rsi, input\n" + 
-				"\tmov rdx, 2\n" + 
-				"\tsyscall\n" + 
-				"\tmov al, byte[input]\n" + 
-				"\tmov byte[rbx], al\n")
+	write(f, "\tcall _input\n")
 	f.index += 1
 }
 
 write_output :: proc(f: ^File) {
-	write(f, 	"\tmov rax, SYS_WRITE\n" + 
-				"\tmov rdi, STDOUT\n" + 
-				"\tmov rsi, rbx\n" + 
-				"\tmov rdx, 1\n" + 
-				"\tsyscall\n")
+	write(f, "\tcall _output\n")
 	f.index += 1
 }
 
@@ -246,6 +236,22 @@ write_setup :: proc(f: ^File) {
 				"section .bss\n" + 
 				"	input: resb 2\n" + 
 				"section .text\n" + 
+				"_input:\n" +
+				"\tmov rax, SYS_READ\n" + 
+				"\tmov rdi, STDIN\n" + 
+				"\tmov rsi, input\n" + 
+				"\tmov rdx, 2\n" + 
+				"\tsyscall\n" + 
+				"\tmov al, byte[input]\n" + 
+				"\tmov byte[rbx], al\n" + 
+				"\tret\n" + 
+				"_output:\n" +
+				"\tmov rax, SYS_WRITE\n" + 
+				"\tmov rdi, STDOUT\n" + 
+				"\tmov rsi, rbx\n" + 
+				"\tmov rdx, 1\n" + 
+				"\tsyscall\n" + 
+				"\tret\n" + 
 				"_start:\n" + 
 				"\tpush rbp\n" + 
 				"\tmov rbp, rsp\n" + 
