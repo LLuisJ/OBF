@@ -2,7 +2,7 @@
 
 OBF (odin brainfuck) is a brainfuck compiler written on [odin](https://github.com/odin-lang/Odin). It compiles brainfuck code to nasm assembly.
 
-Currently supported is only elf x64.
+Currently supported is only elf x86/x64.
 
 In the examples folder is a helloworld and mandelbrot example, both compile successfully.
 

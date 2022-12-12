@@ -4,9 +4,9 @@
 	And brainfuck seemed like a good language to compile because of its simplicity.
 	To use this compiler, you need nasm and some kind of linker (this stuff needs to be in the path).
 	The program calls:
-		- nasm -felf64 <name>.o
+		- nasm -felf64 <name>.o | nasm -felf <name>.o
 		- ld <name>.o -o <name>
-	For now this only works on x64 linux.
+	For now this only works on x86/x64 linux.
 	As far as i can see, this doesn't depend on any library since it uses syscalls for input/output.
 */
 package main
