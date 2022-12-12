@@ -48,7 +48,16 @@ main :: proc() {
 	source_file := os.args[1]
 	run := false
 	keep_asm := false
-	generator := Generator.X64
+	when ODIN_OS != .Linux {
+		#panic("unsupported platform (only linux for now)")
+	}
+	when ODIN_ARCH == .amd64 {
+		generator := Generator.X64
+	} else when ODIN_ARCH == .i386 {
+		generator := Generator.X86
+	} else {
+		#panic("unsupported architecture")
+	}
 	if len(os.args) > 2 {
 		if slice.contains(os.args, "-r") {
 			run = true
@@ -56,8 +65,14 @@ main :: proc() {
 		if slice.contains(os.args, "-k") {
 			keep_asm = true
 		}
-		if slice.contains(os.args, "-32") {
-			generator = .X86
+		when ODIN_ARCH == .amd64 {
+			if slice.contains(os.args, "-32") {
+				generator = .X86
+			}
+		} else when ODIN_ARCH == .i386 {
+			if slice.contains(os.args, "-64") {
+				generator = .X64
+			}
 		}
 	}
 	if !os.exists(source_file) {

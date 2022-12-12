@@ -19,13 +19,19 @@ odin build . -out:obf
 
 #### Usage:
 ```
-./obf file.bf [-r (run) | -k (keep asm) | -32 (generate 32 bit asm)]
+./obf file.bf [-r (run) | -k (keep asm) | (-32 (generate 32 bit asm) | -64 (generate 64 bit asm))]
 ```
 There should be an executable in the current directory now.
 
 If you passed -r it will run it automatically.
 
 If you passed -k it will keep the assembly file. Otherwise it will be deleted.
+
+On 32 bit systems, obf will generate 32 bit asm. You can generate 64 bit asm by passing the -64 flag.
+
+On 64 bit systems, obf will generate 64 bit asm. You can generate 32 bit asm by passing the -32 flag.
+
+Passing the -32 flag on x86 arch or -64 flag on x64 arch will do nothing.
 
 You can simply run the file executable.
 
