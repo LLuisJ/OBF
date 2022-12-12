@@ -28,6 +28,11 @@ File :: struct {
 	out:		^strings.Builder,
 }
 
+Generator :: enum {
+	X64,
+	X86,
+}
+
 main :: proc() {
 	/* 
 		This delete shuts up valgrind about a possible memory leak.
@@ -36,19 +41,23 @@ main :: proc() {
 		frees the args when the program exits.
 	*/
 	defer delete(os.args)
-	if len(os.args) < 2 || len(os.args) > 4 {
-		fmt.println("usage: obf <bf file> [-r (run) | -k (keep asm)]")
+	if len(os.args) < 2 || len(os.args) > 5 {
+		fmt.println("usage: obf <bf file> [-r (run) | -k (keep asm) | -32 (generate 32 bit asm)]")
 		os.exit(1)
 	}
 	source_file := os.args[1]
 	run := false
 	keep_asm := false
+	generator := Generator.X64
 	if len(os.args) > 2 {
 		if slice.contains(os.args, "-r") {
 			run = true
 		}
 		if slice.contains(os.args, "-k") {
 			keep_asm = true
+		}
+		if slice.contains(os.args, "-32") {
+			generator = .X86
 		}
 	}
 	if !os.exists(source_file) {
@@ -72,9 +81,9 @@ main :: proc() {
 	asm_file_path := strings.join([]string{asm_file_name, ".asm"}, "")
 	defer delete(asm_file_path)
 	start := time.now()
-	write_setup(&file)
-	main_loop(&file)
-	write_exit(&file)
+	write_setup(&file, generator)
+	main_loop(&file, generator)
+	write_exit(&file, generator)
 	ok = os.write_entire_file(asm_file_path, transmute([]u8)strings.to_string(file.out^), true)
 	if !ok {
 		cleanup_file(&file)
@@ -82,7 +91,12 @@ main :: proc() {
 		os.exit(1)
 	}
 	cleanup_file(&file)
-	nasm_str := fmt.aprintf("nasm -felf64 %s", asm_file_path)
+	nasm_str: string
+	if generator == .X64 {
+		nasm_str = fmt.aprintf("nasm -felf64 %s", asm_file_path)
+	} else {
+		nasm_str = fmt.aprintf("nasm -felf %s", asm_file_path)
+	}
 	defer delete(nasm_str)
 	nasm_str_c := strings.clone_to_cstring(nasm_str)
 	defer delete(nasm_str_c)
@@ -90,7 +104,12 @@ main :: proc() {
 		fmt.println("error calling nasm")
 		os.exit(1)
 	}
-	ld_str := fmt.aprintf("ld %s.o -o %s", asm_file_name, asm_file_name)
+	ld_str: string
+	if generator == .X64 {
+		ld_str = fmt.aprintf("ld %s.o -o %s", asm_file_name, asm_file_name)
+	} else {
+		ld_str = fmt.aprintf("ld -m elf_i386 %s.o -o %s", asm_file_name, asm_file_name)
+	}
 	defer delete(ld_str)
 	ld_str_c := strings.clone_to_cstring(ld_str)
 	defer delete(ld_str_c)
@@ -120,25 +139,25 @@ main :: proc() {
 	}
 }
 
-main_loop :: proc(f: ^File) {
+main_loop :: proc(f: ^File, generator: Generator) {
 	for f.index < len(f.data) {
 		switch f.data[f.index] {
 			case '>':
-				write_right(f)
+				write_right(f, generator)
 			case '<':
-				write_left(f)
+				write_left(f, generator)
 			case '.':
 				write_output(f)
 			case ',':
 				write_input(f)
 			case '+':
-				write_add(f)
+				write_add(f, generator)
 			case '-':
-				write_sub(f)
+				write_sub(f, generator)
 			case '[':
-				write_loop_begin(f)
+				write_loop_begin(f, generator)
 			case ']':
-				write_loop_end(f)
+				write_loop_end(f, generator)
 			case:
 				f.index += 1
 				continue
@@ -146,25 +165,43 @@ main_loop :: proc(f: ^File) {
 	}
 }
 
-write_right :: proc(f: ^File) {
+write_right :: proc(f: ^File, gen: Generator) {
 	times := count(f, '>')
 	if times > 1 {
-		str := fmt.aprintf("\tadd rbx, %d\n", times)
+		str: string
+		if gen == .X64 {
+			str = fmt.aprintf("\tadd rbx, %d\n", times)
+		} else {
+			str = fmt.aprintf("\tadd ebx, %d\n", times)
+		}
 		defer delete(str)
 		write(f, str)
 	} else {
-		write(f, "\tinc rbx\n")
+		if gen == .X64 {
+			write(f, "\tinc rbx\n")
+		} else {
+			write(f, "\tinc ebx\n")
+		}
 	}
 }
 
-write_left :: proc(f: ^File) {
+write_left :: proc(f: ^File, gen: Generator) {
 	times := count(f, '<')
 	if times > 1 {
-		str := fmt.aprintf("\tsub rbx, %d\n", times)
+		str: string
+		if gen == .X64 {
+			str = fmt.aprintf("\tsub rbx, %d\n", times)
+		} else {
+			str = fmt.aprintf("\tsub ebx, %d\n", times)
+		}
 		defer delete(str)
 		write(f, str)
 	} else {
-		write(f, "\tdec rbx\n")
+		if gen == .X64 {
+			write(f, "\tdec rbx\n")
+		} else {
+			write(f, "\tdec ebx\n")
+		}
 	}
 }
 
@@ -178,32 +215,57 @@ write_output :: proc(f: ^File) {
 	f.index += 1
 }
 
-write_add :: proc(f: ^File) {
+write_add :: proc(f: ^File, gen: Generator) {
 	times := count(f, '+')
 	if times > 1 {
-		str := fmt.aprintf("\tadd byte [rbx], %d\n", times)
+		str: string
+		if gen == .X64 {
+			str = fmt.aprintf("\tadd byte [rbx], %d\n", times)
+		} else {
+			str = fmt.aprintf("\tadd byte [ebx], %d\n", times)
+		}
 		defer delete(str)
 		write(f, str)
 	} else {
-		write(f, "\tinc byte [rbx]\n")
+		if gen == .X64 {
+			write(f, "\tinc byte [rbx]\n")
+		} else {
+			write(f, "\tinc byte [ebx]\n")
+		}
 	}
 }
 
-write_sub :: proc(f: ^File) {
+write_sub :: proc(f: ^File, gen: Generator) {
 	times := count(f, '-')
 	if times > 1 {
-		str := fmt.aprintf("\tsub byte [rbx], %d\n", times)
+		str: string
+		if gen == .X64 {
+			str = fmt.aprintf("\tsub byte [rbx], %d\n", times)
+		} else {
+			str = fmt.aprintf("\tsub byte [ebx], %d\n", times)
+		}
 		defer delete(str)
 		write(f, str)
 	} else {
-		write(f, "\tdec byte [rbx]\n")
+		if gen == .X64 {
+			write(f, "\tdec byte [rbx]\n")
+		} else {
+			write(f, "\tdec  byte [ebx]\n")
+		}
 	}
 }
 
-write_loop_begin :: proc(f: ^File) {
-	str := fmt.aprintf(	"\tcmp byte [rbx], 0\n" +
-						"\tje lb_end_%d\n" +
-						"lb_start_%d:\n", f.loop, f.loop)
+write_loop_begin :: proc(f: ^File, gen: Generator) {
+	str: string
+	if gen == .X64 {
+		str = fmt.aprintf(	"\tcmp byte [rbx], 0\n" +
+							"\tje lb_end_%d\n" +
+							"lb_start_%d:\n", f.loop, f.loop)
+	} else {
+		str = fmt.aprintf(	"\tcmp byte [ebx], 0\n" + 
+							"\tje lb_end_%d\n" + 
+							"lb_start_%d:\n", f.loop, f.loop)
+	}
 	defer delete(str)
 	write(f, str)
 	append(&f.loop_arr, f.loop)
@@ -211,11 +273,18 @@ write_loop_begin :: proc(f: ^File) {
 	f.index += 1
 }
 
-write_loop_end :: proc(f: ^File) {
+write_loop_end :: proc(f: ^File, gen: Generator) {
 	id := f.loop_arr[len(f.loop_arr)-1]
-	str := fmt.aprintf(	"\tcmp byte [rbx], 0\n" + 
-						"\tjne lb_start_%d\n" + 
-						"lb_end_%d:\n", id, id)
+	str: string
+	if gen == .X64 {
+		str = fmt.aprintf(	"\tcmp byte [rbx], 0\n" + 
+							"\tjne lb_start_%d\n" + 
+							"lb_end_%d:\n", id, id)
+	} else {
+		str = fmt.aprintf(	"\tcmp byte [ebx], 0\n" + 
+							"\tjne lb_start_%d\n" + 
+							"lb_end_%d:\n", id, id)
+	}
 	defer delete(str)
 	write(f, str)
 	arr_tmp := cast(^runtime.Raw_Dynamic_Array)&f.loop_arr
@@ -223,47 +292,94 @@ write_loop_end :: proc(f: ^File) {
 	f.index += 1
 }
 
-write_setup :: proc(f: ^File) {
-	write(f, "BITS 64\n" + 
-				"global _start\n" + 
-				"SYS_READ 	equ 0\n" + 
-				"SYS_WRITE 	equ 1\n" + 
-				"SYS_EXIT 	equ 60\n" + 
-				"STDIN		equ 0\n" + 
-				"STDOUT		equ 1\n" + 
-				"section .data\n" + 
-				"	buffer times 30000 db 0\n" + 
-				"section .bss\n" + 
-				"	input: resb 2\n" + 
-				"section .text\n" + 
-				"_input:\n" +
-				"\tmov rax, SYS_READ\n" + 
-				"\tmov rdi, STDIN\n" + 
-				"\tmov rsi, input\n" + 
-				"\tmov rdx, 2\n" + 
-				"\tsyscall\n" + 
-				"\tmov al, byte[input]\n" + 
-				"\tmov byte[rbx], al\n" + 
-				"\tret\n" + 
-				"_output:\n" +
-				"\tmov rax, SYS_WRITE\n" + 
-				"\tmov rdi, STDOUT\n" + 
-				"\tmov rsi, rbx\n" + 
-				"\tmov rdx, 1\n" + 
-				"\tsyscall\n" + 
-				"\tret\n" + 
-				"_start:\n" + 
-				"\tpush rbp\n" + 
-				"\tmov rbp, rsp\n" + 
-				"\tmov rbx, buffer\n")
+write_setup :: proc(f: ^File, gen: Generator) {
+	if gen == .X64 {
+		write(f, 	"BITS 64\n" + 
+					"global _start\n" + 
+					"SYS_READ 	equ 0\n" + 
+					"SYS_WRITE 	equ 1\n" + 
+					"SYS_EXIT 	equ 60\n" + 
+					"STDIN		equ 0\n" + 
+					"STDOUT		equ 1\n" + 
+					"section .data\n" + 
+					"	buffer times 30000 db 0\n" + 
+					"section .bss\n" + 
+					"	input: resb 2\n" + 
+					"section .text\n" + 
+					"_input:\n" +
+					"\tmov rax, SYS_READ\n" + 
+					"\tmov rdi, STDIN\n" + 
+					"\tmov rsi, input\n" + 
+					"\tmov rdx, 2\n" + 
+					"\tsyscall\n" + 
+					"\tmov al, byte[input]\n" + 
+					"\tmov byte[rbx], al\n" + 
+					"\tret\n" + 
+					"_output:\n" +
+					"\tmov rax, SYS_WRITE\n" + 
+					"\tmov rdi, STDOUT\n" + 
+					"\tmov rsi, rbx\n" + 
+					"\tmov rdx, 1\n" + 
+					"\tsyscall\n" + 
+					"\tret\n" + 
+					"_start:\n" + 
+					"\tpush rbp\n" + 
+					"\tmov rbp, rsp\n" + 
+					"\tmov rbx, buffer\n")
+	} else {
+		write(f, 	"BITS 32\n" + 
+					"global _start\n" + 
+					"SYS_READ 	equ 3\n" + 
+					"SYS_WRITE 	equ 4\n" + 
+					"SYS_EXIT 	equ 1\n" + 
+					"STDIN		equ 0\n" + 
+					"STDOUT		equ 1\n" + 
+					"section .data\n" + 
+					"\tbuffer times 30000 db 0\n" + 
+					"section .bss\n" + 
+					"\tinput: resb 2\n" + 
+					"section .text\n" + 
+					"_input:\n" +
+					"\tpush ebx\n" +
+					"\tmov eax, SYS_READ\n" + 
+					"\tmov ebx, STDIN\n" + 
+					"\tmov ecx, input\n" + 
+					"\tmov edx, 2\n" + 
+					"\tint 80h\n" +
+					"\tpop ebx\n" + 
+					"\tmov al, byte[input]\n" + 
+					"\tmov byte[ebx], al\n" + 
+					"\tret\n" + 
+					"_output:\n" +
+					"\tpush ebx\n" +
+					"\tmov eax, SYS_WRITE\n" + 
+					"\tmov ecx, ebx\n" + 
+					"\tmov ebx, STDOUT\n" + 
+					"\tmov edx, 1\n" + 
+					"\tint 80h\n" +
+					"\tpop ebx\n" + 
+					"\tret\n" + 
+					"_start:\n" + 
+					"\tpush ebp\n" + 
+					"\tmov ebp, esp\n" + 
+					"\tmov ebx, buffer\n")
+	}
 }
 
-write_exit :: proc(f: ^File) {
-	write(f, 	"\tmov rsp, rbp\n" +
-				"\tpop rbp\n" + 
-				"\tmov rax, SYS_EXIT\n" + 
-				"\tmov rdi, 0\n" + 
-				"\tsyscall\n")
+write_exit :: proc(f: ^File, gen: Generator) {
+	if gen == .X64 {
+		write(f, 	"\tmov rsp, rbp\n" +
+					"\tpop rbp\n" + 
+					"\tmov rax, SYS_EXIT\n" + 
+					"\tmov rdi, 0\n" + 
+					"\tsyscall\n")
+	} else {
+		write(f, 	"\tmov esp, ebp\n" + 
+					"\tpop ebp\n" + 
+					"\tmov eax, SYS_EXIT\n" + 
+					"\tmov ebx, 0\n" + 
+					"\tint 80h\n")
+	}
 }
 
 count :: proc(f: ^File, char: u8) -> int {
