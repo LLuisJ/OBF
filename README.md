@@ -19,7 +19,7 @@ odin build . -out:obf
 
 #### Usage:
 ```
-./obf file.bf [-r (run) | -k (keep asm)]
+./obf file.bf [-r (run) | -k (keep asm) | -32 (generate 32 bit asm)]
 ```
 There should be an executable in the current directory now.
 
