@@ -107,35 +107,35 @@ main :: proc() {
 		os.exit(1)
 	}
 	cleanup_file(&file)
-	nasm_str: string
-	if file.gen == .X64 {
-		nasm_str = fmt.aprintf("nasm -felf64 %s", asm_file_path)
+	nasm_str := compile_cmd(&file, asm_file_path)
+	if nasm_str != "" {
+		nasm_str_c := strings.clone_to_cstring(nasm_str)
+		defer delete(nasm_str)
+		defer delete(nasm_str_c)
+		if ierr := libc.system(nasm_str_c); ierr != 0 {
+			fmt.println("error calling nasm")
+			os.exit(1)
+		}
 	} else {
-		nasm_str = fmt.aprintf("nasm -felf %s", asm_file_path)
-	}
-	defer delete(nasm_str)
-	nasm_str_c := strings.clone_to_cstring(nasm_str)
-	defer delete(nasm_str_c)
-	if ierr := libc.system(nasm_str_c); ierr != 0 {
-		fmt.println("error calling nasm")
+		fmt.println("got an empty compile string")
 		os.exit(1)
 	}
-	ld_str: string
-	if file.gen == .X64 {
-		ld_str = fmt.aprintf("ld %s.o -o %s", asm_file_name, asm_file_name)
+	ld_str := link_cmd(&file, asm_file_name)
+	if ld_str != "" {
+		ld_str_c := strings.clone_to_cstring(ld_str)
+		defer delete(ld_str)
+		defer delete(ld_str_c)
+		if ierr := libc.system(ld_str_c); ierr != 0 {
+			fmt.println("error calling ld")
+			os.exit(1)
+		}
 	} else {
-		ld_str = fmt.aprintf("ld -m elf_i386 %s.o -o %s", asm_file_name, asm_file_name)
-	}
-	defer delete(ld_str)
-	ld_str_c := strings.clone_to_cstring(ld_str)
-	defer delete(ld_str_c)
-	if ierr := libc.system(ld_str_c); ierr != 0 {
-		fmt.println("error calling ld")
+		fmt.println("got an empty linker string")
 		os.exit(1)
 	}
 	delete_o_file := fmt.aprintf("%s.o", asm_file_name)
-	defer delete(delete_o_file)
 	delete_o_file_c := strings.clone_to_cstring(delete_o_file)
+	defer delete(delete_o_file)
 	defer delete(delete_o_file_c)
 	_ = libc.remove(delete_o_file_c)
 	if !keep_asm {
@@ -145,8 +145,8 @@ main :: proc() {
 	}
 	if run {
 		run_file := fmt.aprintf("./%s", asm_file_name)
-		defer delete(run_file)
 		run_file_c := strings.clone_to_cstring(run_file)
+		defer delete(run_file)
 		defer delete(run_file_c)
 		if ierr := libc.system(run_file_c); ierr != 0 {
 			fmt.println("error running program")
@@ -268,6 +268,28 @@ write_exit :: proc(f: ^File) {
 			write_exit_x64(f)
 		case .X86:
 			write_exit_x86(f)
+	}
+}
+
+compile_cmd :: proc(f: ^File, name: string) -> string {
+	#partial switch f.gen {
+		case .X64:
+			return compile_cmd_x64(f, name)
+		case .X86:
+			return compile_cmd_x86(f, name)
+		case:
+			return ""
+	}
+}
+
+link_cmd :: proc(f: ^File, name: string) -> string {
+	#partial switch f.gen {
+		case .X64:
+			return link_cmd_x64(f, name)
+		case .X86:
+			return link_cmd_x86(f, name)
+		case:
+			return ""
 	}
 }
 

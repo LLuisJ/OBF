@@ -126,3 +126,17 @@ write_exit_x86 :: proc(f: ^File) {
 				"\tmov ebx, 0\n" + 
 				"\tint 80h\n")
 }
+
+compile_cmd_x86 :: proc(f: ^File, name: string) -> string {
+	return fmt.aprintf("nasm -felf %s", name)
+}
+
+link_cmd_x86 :: proc(f: ^File, name: string) -> string {
+	when ODIN_ARCH == .i386 {
+		return fmt.aprintf("ld %s.o -o %s", name, name)
+	} else when ODIN_ARCH == .amd64 {
+		return fmt.aprintf("ld -m elf_i386 %s.o -o %s", name, name)
+	} else {
+		return ""
+	}
+}

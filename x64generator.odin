@@ -122,3 +122,19 @@ write_exit_x64 :: proc(f: ^File) {
 				"\tmov rdi, 0\n" + 
 				"\tsyscall\n")
 }
+
+compile_cmd_x64 :: proc(f: ^File, name: string) -> string {
+	return fmt.aprintf("nasm -felf64 %s", name)
+}
+
+link_cmd_x64 :: proc(f: ^File, name: string) -> string {
+	when ODIN_ARCH == .amd64 {
+		return fmt.aprintf("ld %s.o -o %s", name, name)
+	} else when ODIN_ARCH == .i386 {
+		// This is not tested. It should work (i think?). I don't know though if it should be elf32_x86_64.
+		// But does this make sense? Compiling a 64 bit executable on a 32 bit system? Does this work when running the executable?
+		return fmt.aprintf("ld -m elf_x86_64 %s.o -o %s", name, name)
+	} else {
+		return ""
+	}
+}
