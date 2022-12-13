@@ -18,7 +18,13 @@ import "core:path/filepath"
 import "core:runtime"
 import "core:slice"
 import "core:strings"
-import "core:time"
+
+
+Generator :: enum {
+	X64,
+	X86,
+	UNKNOWN,
+}
 
 File :: struct {
 	index: 		int,
@@ -26,11 +32,7 @@ File :: struct {
 	loop_arr:	[dynamic]int,
 	data: 		[]u8,
 	out:		^strings.Builder,
-}
-
-Generator :: enum {
-	X64,
-	X86,
+	gen:		Generator,
 }
 
 main :: proc() {
@@ -51,10 +53,12 @@ main :: proc() {
 	when ODIN_OS != .Linux {
 		#panic("unsupported platform (only linux for now)")
 	}
+	arr_loop := make([dynamic]int, 0)
+	file := File{0, 0, arr_loop, nil, nil, .UNKNOWN}
 	when ODIN_ARCH == .amd64 {
-		generator := Generator.X64
+		file.gen = Generator.X64
 	} else when ODIN_ARCH == .i386 {
-		generator := Generator.X86
+		file.gen = Generator.X86
 	} else {
 		#panic("unsupported architecture")
 	}
@@ -67,11 +71,11 @@ main :: proc() {
 		}
 		when ODIN_ARCH == .amd64 {
 			if slice.contains(os.args, "-32") {
-				generator = .X86
+				file.gen = .X86
 			}
 		} else when ODIN_ARCH == .i386 {
 			if slice.contains(os.args, "-64") {
-				generator = .X64
+				file.gen = .X64
 			}
 		}
 	}
@@ -79,8 +83,6 @@ main :: proc() {
 		fmt.printf("file %s does not exist\n", source_file)
 		os.exit(1)
 	}
-	arr_loop := make([dynamic]int, 0)
-	file := File{0, 0, arr_loop, nil, nil}
 	builder := strings.builder_make_none()
 	file.out = &builder
 	content, ok := os.read_entire_file_from_filename(source_file)
@@ -95,10 +97,9 @@ main :: proc() {
 	}
 	asm_file_path := strings.join([]string{asm_file_name, ".asm"}, "")
 	defer delete(asm_file_path)
-	start := time.now()
-	write_setup(&file, generator)
-	main_loop(&file, generator)
-	write_exit(&file, generator)
+	write_setup(&file)
+	main_loop(&file)
+	write_exit(&file)
 	ok = os.write_entire_file(asm_file_path, transmute([]u8)strings.to_string(file.out^), true)
 	if !ok {
 		cleanup_file(&file)
@@ -107,7 +108,7 @@ main :: proc() {
 	}
 	cleanup_file(&file)
 	nasm_str: string
-	if generator == .X64 {
+	if file.gen == .X64 {
 		nasm_str = fmt.aprintf("nasm -felf64 %s", asm_file_path)
 	} else {
 		nasm_str = fmt.aprintf("nasm -felf %s", asm_file_path)
@@ -120,7 +121,7 @@ main :: proc() {
 		os.exit(1)
 	}
 	ld_str: string
-	if generator == .X64 {
+	if file.gen == .X64 {
 		ld_str = fmt.aprintf("ld %s.o -o %s", asm_file_name, asm_file_name)
 	} else {
 		ld_str = fmt.aprintf("ld -m elf_i386 %s.o -o %s", asm_file_name, asm_file_name)
@@ -154,25 +155,25 @@ main :: proc() {
 	}
 }
 
-main_loop :: proc(f: ^File, generator: Generator) {
+main_loop :: proc(f: ^File) {
 	for f.index < len(f.data) {
 		switch f.data[f.index] {
 			case '>':
-				write_right(f, generator)
+				write_right(f)
 			case '<':
-				write_left(f, generator)
+				write_left(f)
 			case '.':
 				write_output(f)
 			case ',':
 				write_input(f)
 			case '+':
-				write_add(f, generator)
+				write_add(f)
 			case '-':
-				write_sub(f, generator)
+				write_sub(f)
 			case '[':
-				write_loop_begin(f, generator)
+				write_loop_begin(f)
 			case ']':
-				write_loop_end(f, generator)
+				write_loop_end(f)
 			case:
 				f.index += 1
 				continue
@@ -180,220 +181,93 @@ main_loop :: proc(f: ^File, generator: Generator) {
 	}
 }
 
-write_right :: proc(f: ^File, gen: Generator) {
-	times := count(f, '>')
-	if times > 1 {
-		str: string
-		if gen == .X64 {
-			str = fmt.aprintf("\tadd rbx, %d\n", times)
-		} else {
-			str = fmt.aprintf("\tadd ebx, %d\n", times)
-		}
-		defer delete(str)
-		write(f, str)
-	} else {
-		if gen == .X64 {
-			write(f, "\tinc rbx\n")
-		} else {
-			write(f, "\tinc ebx\n")
-		}
+write_right :: proc(f: ^File) {
+	#partial switch f.gen {
+		case .X64:
+			write_right_x64(f)
+		case .X86:
+			write_right_x86(f)
 	}
 }
 
-write_left :: proc(f: ^File, gen: Generator) {
-	times := count(f, '<')
-	if times > 1 {
-		str: string
-		if gen == .X64 {
-			str = fmt.aprintf("\tsub rbx, %d\n", times)
-		} else {
-			str = fmt.aprintf("\tsub ebx, %d\n", times)
-		}
-		defer delete(str)
-		write(f, str)
-	} else {
-		if gen == .X64 {
-			write(f, "\tdec rbx\n")
-		} else {
-			write(f, "\tdec ebx\n")
-		}
+write_left :: proc(f: ^File) {
+	#partial switch f.gen {
+		case .X64:
+			write_left_x64(f)
+		case .X86:
+			write_left_x86(f)
 	}
 }
 
 write_input :: proc(f: ^File) {
-	write(f, "\tcall _input\n")
-	f.index += 1
+	#partial switch f.gen {
+		case .X64:
+			write_input_x64(f)
+		case .X86:
+			write_input_x86(f)
+	}
 }
 
 write_output :: proc(f: ^File) {
-	write(f, "\tcall _output\n")
-	f.index += 1
-}
-
-write_add :: proc(f: ^File, gen: Generator) {
-	times := count(f, '+')
-	if times > 1 {
-		str: string
-		if gen == .X64 {
-			str = fmt.aprintf("\tadd byte [rbx], %d\n", times)
-		} else {
-			str = fmt.aprintf("\tadd byte [ebx], %d\n", times)
-		}
-		defer delete(str)
-		write(f, str)
-	} else {
-		if gen == .X64 {
-			write(f, "\tinc byte [rbx]\n")
-		} else {
-			write(f, "\tinc byte [ebx]\n")
-		}
+	#partial switch f.gen {
+		case .X64:
+			write_output_x64(f)
+		case .X86:
+			write_output_x86(f)
 	}
 }
 
-write_sub :: proc(f: ^File, gen: Generator) {
-	times := count(f, '-')
-	if times > 1 {
-		str: string
-		if gen == .X64 {
-			str = fmt.aprintf("\tsub byte [rbx], %d\n", times)
-		} else {
-			str = fmt.aprintf("\tsub byte [ebx], %d\n", times)
-		}
-		defer delete(str)
-		write(f, str)
-	} else {
-		if gen == .X64 {
-			write(f, "\tdec byte [rbx]\n")
-		} else {
-			write(f, "\tdec  byte [ebx]\n")
-		}
+write_add :: proc(f: ^File) {
+	#partial switch f.gen {
+		case .X64:
+			write_add_x64(f)
+		case .X86:
+			write_add_x86(f)
 	}
 }
 
-write_loop_begin :: proc(f: ^File, gen: Generator) {
-	str: string
-	if gen == .X64 {
-		str = fmt.aprintf(	"\tcmp byte [rbx], 0\n" +
-							"\tje lb_end_%d\n" +
-							"lb_start_%d:\n", f.loop, f.loop)
-	} else {
-		str = fmt.aprintf(	"\tcmp byte [ebx], 0\n" + 
-							"\tje lb_end_%d\n" + 
-							"lb_start_%d:\n", f.loop, f.loop)
-	}
-	defer delete(str)
-	write(f, str)
-	append(&f.loop_arr, f.loop)
-	f.loop += 1
-	f.index += 1
-}
-
-write_loop_end :: proc(f: ^File, gen: Generator) {
-	id := f.loop_arr[len(f.loop_arr)-1]
-	str: string
-	if gen == .X64 {
-		str = fmt.aprintf(	"\tcmp byte [rbx], 0\n" + 
-							"\tjne lb_start_%d\n" + 
-							"lb_end_%d:\n", id, id)
-	} else {
-		str = fmt.aprintf(	"\tcmp byte [ebx], 0\n" + 
-							"\tjne lb_start_%d\n" + 
-							"lb_end_%d:\n", id, id)
-	}
-	defer delete(str)
-	write(f, str)
-	arr_tmp := cast(^runtime.Raw_Dynamic_Array)&f.loop_arr
-	arr_tmp.len = arr_tmp.len-1
-	f.index += 1
-}
-
-write_setup :: proc(f: ^File, gen: Generator) {
-	if gen == .X64 {
-		write(f, 	"BITS 64\n" + 
-					"global _start\n" + 
-					"SYS_READ 	equ 0\n" + 
-					"SYS_WRITE 	equ 1\n" + 
-					"SYS_EXIT 	equ 60\n" + 
-					"STDIN		equ 0\n" + 
-					"STDOUT		equ 1\n" + 
-					"section .data\n" + 
-					"	buffer times 30000 db 0\n" + 
-					"section .bss\n" + 
-					"	input: resb 2\n" + 
-					"section .text\n" + 
-					"_input:\n" +
-					"\tmov rax, SYS_READ\n" + 
-					"\tmov rdi, STDIN\n" + 
-					"\tmov rsi, input\n" + 
-					"\tmov rdx, 2\n" + 
-					"\tsyscall\n" + 
-					"\tmov al, byte[input]\n" + 
-					"\tmov byte[rbx], al\n" + 
-					"\tret\n" + 
-					"_output:\n" +
-					"\tmov rax, SYS_WRITE\n" + 
-					"\tmov rdi, STDOUT\n" + 
-					"\tmov rsi, rbx\n" + 
-					"\tmov rdx, 1\n" + 
-					"\tsyscall\n" + 
-					"\tret\n" + 
-					"_start:\n" + 
-					"\tpush rbp\n" + 
-					"\tmov rbp, rsp\n" + 
-					"\tmov rbx, buffer\n")
-	} else {
-		write(f, 	"BITS 32\n" + 
-					"global _start\n" + 
-					"SYS_READ 	equ 3\n" + 
-					"SYS_WRITE 	equ 4\n" + 
-					"SYS_EXIT 	equ 1\n" + 
-					"STDIN		equ 0\n" + 
-					"STDOUT		equ 1\n" + 
-					"section .data\n" + 
-					"\tbuffer times 30000 db 0\n" + 
-					"section .bss\n" + 
-					"\tinput: resb 2\n" + 
-					"section .text\n" + 
-					"_input:\n" +
-					"\tpush ebx\n" +
-					"\tmov eax, SYS_READ\n" + 
-					"\tmov ebx, STDIN\n" + 
-					"\tmov ecx, input\n" + 
-					"\tmov edx, 2\n" + 
-					"\tint 80h\n" +
-					"\tpop ebx\n" + 
-					"\tmov al, byte[input]\n" + 
-					"\tmov byte[ebx], al\n" + 
-					"\tret\n" + 
-					"_output:\n" +
-					"\tpush ebx\n" +
-					"\tmov eax, SYS_WRITE\n" + 
-					"\tmov ecx, ebx\n" + 
-					"\tmov ebx, STDOUT\n" + 
-					"\tmov edx, 1\n" + 
-					"\tint 80h\n" +
-					"\tpop ebx\n" + 
-					"\tret\n" + 
-					"_start:\n" + 
-					"\tpush ebp\n" + 
-					"\tmov ebp, esp\n" + 
-					"\tmov ebx, buffer\n")
+write_sub :: proc(f: ^File) {
+	#partial switch f.gen {
+		case .X64:
+			write_sub_x64(f)
+		case .X86:
+			write_sub_x86(f)
 	}
 }
 
-write_exit :: proc(f: ^File, gen: Generator) {
-	if gen == .X64 {
-		write(f, 	"\tmov rsp, rbp\n" +
-					"\tpop rbp\n" + 
-					"\tmov rax, SYS_EXIT\n" + 
-					"\tmov rdi, 0\n" + 
-					"\tsyscall\n")
-	} else {
-		write(f, 	"\tmov esp, ebp\n" + 
-					"\tpop ebp\n" + 
-					"\tmov eax, SYS_EXIT\n" + 
-					"\tmov ebx, 0\n" + 
-					"\tint 80h\n")
+write_loop_begin :: proc(f: ^File) {
+	#partial switch f.gen {
+		case .X64:
+			write_loop_begin_x64(f)
+		case .X86:
+			write_loop_begin_x86(f)
+	}
+}
+
+write_loop_end :: proc(f: ^File) {
+	#partial switch f.gen {
+		case .X64:
+			write_loop_end_x64(f)
+		case .X86:
+			write_loop_end_x86(f)
+	}
+}
+
+write_setup :: proc(f: ^File) {
+	#partial switch f.gen {
+		case .X64:
+			write_setup_x64(f)
+		case .X86:
+			write_setup_x86(f)
+	}
+}
+
+write_exit :: proc(f: ^File) {
+	#partial switch f.gen {
+		case .X64:
+			write_exit_x64(f)
+		case .X86:
+			write_exit_x86(f)
 	}
 }
 
