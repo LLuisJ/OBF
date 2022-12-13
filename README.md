@@ -37,6 +37,8 @@ You can simply run the file executable.
 
 The executables don't depend on libc, they only use syscalls, so it should work out of the box.
 
+Big thanks to http://brainfuck.org/ for some of the examples in the examples folder.
+
 Btw: BIG thanks to Tsoding for making all those videos about his development of the porth language, since it helped me a lot in understanding assembly
 and compilers in general.
 
