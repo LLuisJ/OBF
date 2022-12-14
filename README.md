@@ -1,6 +1,6 @@
 # OBF
 
-OBF (odin brainfuck) is a brainfuck compiler written in [odin](https://github.com/odin-lang/Odin). It compiles brainfuck code to nasm assembly.
+OBF is a brainfuck compiler written in [odin](https://github.com/odin-lang/Odin). It compiles brainfuck code to nasm assembly.
 
 Currently supported is only elf x86/x64.
 
