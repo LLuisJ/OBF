@@ -53,7 +53,7 @@ main :: proc() {
 	run := false
 	keep_asm := false
 	when ODIN_OS != .Linux && ODIN_OS != .Windows {
-		#panic("unsupported platform (only linux for now)")
+		#panic("unsupported platform (only linux/windows for now)")
 	}
 	arr_loop := make([dynamic]int, 0)
 	file := File{0, 0, arr_loop, nil, nil, .UNKNOWN}
