@@ -82,40 +82,42 @@ write_loop_end_x64_windows :: proc(f: ^File) {
 
 write_setup_x64_windows :: proc(f: ^File) {
 	write(f, 	"BITS 64\n" + 
-				"default rel\n" +
+				"default rel\n" + 
 				"global _main\n" + 
 				"STDOUT_HANDLE equ -11\n" + 
 				"STDIN_HANDLE equ -10\n" + 
-				"extern ExitProcess, GetStdHandle, WriteFile, ReadFile, CloseHandle\n" +
+				"extern ExitProcess, GetStdHandle, WriteConsoleA, ReadConsoleA, CloseHandle\n" +
 				"section .data\n" + 
 				"\tbuffer times 30000 db 0\n" + 
 				"\tout_handle dq 0\n" +
 				"\tin_handle dq 0\n" + 
 				"section .bss\n" + 
-				"\tinput: resb 2\n" +
-				"\tnum_written: resd 1" + 
+				"\tinput: resb 3\n" +
+				"\tread: resb 4\n" + 
+				"\twritten: resb 4\n" +  
+				"section .text\n" + 
 				"_input:\n" +
-				"\tsub rsp, 48\n" + 
+				"\tsub rsp, 40\n" + 
 				"\tmov rcx, [in_handle]\n" + 
 				"\tmov rdx, input\n" + 
 				"\tmov r8, 1\n" + 
-				"\tmov r9, 0\n" + 
-				"\tpush 0\n" + 
+				"\tmov r9, read\n" + 
+				"\tcall ReadConsoleA\n" + 
+				"\tmov al, byte [input]\n" + 
+				"\tmov byte [rbx], al\n" + 
+				"\tadd rsp, 40\n" + 
 				"\tret\n" + 
 				"_output:\n" + 
-				"\tsub rsp, 48\n" +
-				"\tmov rcx, [output_handle]\n" + 
-				"\tmov rdx, buffer\n" + 
+				"\tsub rsp, 40\n" +
+				"\tmov rcx, [out_handle]\n" + 
+				"\tmov rdx, rbx\n" + 
 				"\tmov r8, 1\n" + 
-				"\tmov r9, num_written\n" + 
-				"\tpush qword 0\n" + 
-				"\tcall WriteFile\n" +
-				"\tadd rsp, 48\n" +
+				"\tmov r9, written\n" + 
+				"\tcall WriteConsoleA\n" +
+				"\tadd rsp, 40\n" +
 				"\tret\n" +
 				"_main:\n" + 
-				"\tpush rbp\n" + 
 				"\tsub rsp, 40\n" + 
-				"\tmov rbp, rsp\n" +
 				"\tmov rbx, buffer\n" +
 				"\tmov rcx, STDOUT_HANDLE\n" + 
 				"\tcall GetStdHandle\n" + 
@@ -133,8 +135,6 @@ write_exit_x64_windows :: proc(f: ^File) {
 				"\tcall CloseHandle\n" + 
 				"\tmov rcx, [in_handle]\n" + 
 				"\tcall CloseHandle\n" + 
-				"\tmov rsp, rbp\n" + 
-				"\tpop rbp\n" + 
 				"\tadd rsp, 8\n" + 
 				"\tmov rcx, 0\n" + 
 				"\tcall ExitProcess\n")
@@ -147,9 +147,9 @@ compile_cmd_x64_windows :: proc(name: string) -> string {
 	return fmt.aprintf("nasm -fwin64 %s", name)
 }
 
-link_command_x64_windows :: proc(name: string) -> string {
+link_cmd_x64_windows :: proc(name: string) -> string {
 	when ODIN_OS == .Linux {
 		return ""
 	}
-	return fmt.aprintf("link /subsystem:console /nodefaultlib /entry:main %s kernel32.Lib", name)
+	return fmt.aprintf("link /subsystem:console /nodefaultlib /entry:_main %s kernel32.Lib", name)
 }

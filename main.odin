@@ -130,7 +130,7 @@ main :: proc() {
 		fmt.println("error writing to file")
 		os.exit(1)
 	}
-	nasm_str := compile_cmd(asm_file_path)
+	nasm_str := compile_cmd(&file, asm_file_path)
 	if nasm_str != "" {
 		nasm_str_c := strings.clone_to_cstring(nasm_str)
 		defer delete(nasm_str)
@@ -143,7 +143,7 @@ main :: proc() {
 		fmt.println("got an empty compile string")
 		os.exit(1)
 	}
-	ld_str := link_cmd(asm_file_name)
+	ld_str := link_cmd(&file, asm_file_name)
 	if ld_str != "" {
 		ld_str_c := strings.clone_to_cstring(ld_str)
 		defer delete(ld_str)
@@ -156,7 +156,11 @@ main :: proc() {
 		fmt.println("got an empty linker string")
 		os.exit(1)
 	}
-	delete_o_file := fmt.aprintf("%s.o", asm_file_name)
+	when ODIN_OS != .Windows {
+		delete_o_file := fmt.aprintf("%s.o", asm_file_name)
+	} else {
+		delete_o_file := fmt.aprintf("%s.obj", asm_file_name)
+	}
 	delete_o_file_c := strings.clone_to_cstring(delete_o_file)
 	defer delete(delete_o_file)
 	defer delete(delete_o_file_c)
@@ -277,7 +281,7 @@ write_loop_begin :: proc(f: ^File) {
 		case .X86Linux:
 			write_loop_begin_x86_linux(f)
 		case .x64Windows:
-			write_loop_end_x64_windows(f)
+			write_loop_begin_x64_windows(f)
 	}
 }
 
@@ -314,7 +318,7 @@ write_exit :: proc(f: ^File) {
 	}
 }
 
-compile_cmd :: proc(name: string) -> string {
+compile_cmd :: proc(f: ^File, name: string) -> string {
 	#partial switch f.gen {
 		case .X64Linux:
 			return compile_cmd_x64_linux(name)

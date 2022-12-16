@@ -127,11 +127,11 @@ write_exit_x86_linux :: proc(f: ^File) {
 				"\tint 80h\n")
 }
 
-compile_cmd_x86_linux :: proc(f: ^File, name: string) -> string {
+compile_cmd_x86_linux :: proc(name: string) -> string {
 	return fmt.aprintf("nasm -felf %s", name)
 }
 
-link_cmd_x86_linux :: proc(f: ^File, name: string) -> string {
+link_cmd_x86_linux :: proc(name: string) -> string {
 	when ODIN_OS == .Windows {
 		return ""
 	}
