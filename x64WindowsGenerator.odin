@@ -117,6 +117,8 @@ write_setup_x64_windows :: proc(f: ^File) {
 				"\tadd rsp, 40\n" +
 				"\tret\n" +
 				"_main:\n" + 
+				"\tpush rsp\n" + 
+				"\tmov rbp, rsp\n" + 
 				"\tsub rsp, 40\n" + 
 				"\tmov rbx, buffer\n" +
 				"\tmov rcx, STDOUT_HANDLE\n" + 
@@ -136,6 +138,8 @@ write_exit_x64_windows :: proc(f: ^File) {
 				"\tmov rcx, [in_handle]\n" + 
 				"\tcall CloseHandle\n" + 
 				"\tadd rsp, 8\n" + 
+				"\tmov rsp, rbp\n" + 
+				"\tpop rbp\n" + 
 				"\tmov rcx, 0\n" + 
 				"\tcall ExitProcess\n")
 }
