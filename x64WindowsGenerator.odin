@@ -151,5 +151,5 @@ link_cmd_x64_windows :: proc(name: string) -> string {
 	when ODIN_OS == .Linux {
 		return ""
 	}
-	return fmt.aprintf("link /subsystem:console /nodefaultlib /entry:_main %s kernel32.Lib", name)
+	return fmt.aprintf("link /subsystem:console /nologo /nodefaultlib /entry:_main %s kernel32.Lib", name)
 }

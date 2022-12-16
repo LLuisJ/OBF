@@ -171,7 +171,11 @@ main :: proc() {
 		_ = libc.remove(asm_file_path_c)
 	}
 	if run {
-		run_file := fmt.aprintf("./%s", asm_file_name)
+		when ODIN_OS != .Windows {
+			run_file := fmt.aprintf("./%s", asm_file_name)
+		} else {
+			run_file := fmt.aprintf("%s.exe", asm_file_name)
+		}
 		run_file_c := strings.clone_to_cstring(run_file)
 		defer delete(run_file)
 		defer delete(run_file_c)
