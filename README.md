@@ -2,6 +2,8 @@
 
 OBF is a brainfuck compiler written in [odin](https://github.com/odin-lang/Odin). It compiles brainfuck code to nasm assembly.
 
+#### Disclaimer: The generated assembly is not guaranteed to be stable/fast/efficient or anything else. This is a hobby project to learn assembly. If you want to make it better, I would be happy if you create a pr and improve something.
+
 Currently supported is only elf x86/x64 (Windows x64 support is experimental, but examples run without any problems).
 
 In the examples folder is a helloworld and mandelbrot example, both compile successfully.
