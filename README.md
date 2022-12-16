@@ -37,6 +37,8 @@ You can simply run the file executable.
 
 The executables don't depend on libc, they only use syscalls, so it should work out of the box.
 
+Windows executables depend on kernel32.dll but since it is installed with windows and always available (AFAIK) this isn't really a problem (See the comment in main.odin for a bit more explanation).
+
 Big thanks to http://brainfuck.org/ for some of the examples in the examples folder.
 
 Btw: BIG thanks to Tsoding for making all those videos about his development of the porth language, since it helped me a lot in understanding assembly
