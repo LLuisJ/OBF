@@ -4,10 +4,14 @@
 	And brainfuck seemed like a good language to compile because of its simplicity.
 	To use this compiler, you need nasm and some kind of linker (this stuff needs to be in the path).
 	The program calls:
-		- nasm -felf64 <name>.o | nasm -felf <name>.o
-		- ld <name>.o -o <name>
+		- nasm -felf64 <name>.o | nasm -felf <name>.o | nasm -fwin64 <name>.obj
+		- ld <name>.o -o <name> | link /subsystem:console /nologo /nodefaultlib /entry:_main <name>.obj kernel32.Lib
 	For now this only works on x86/x64 linux.
 	As far as i can see, this doesn't depend on any library since it uses syscalls for input/output.
+	On windows the only dependency is kernel32.dll but since it is always available (AFAIK) and windows syscalls are
+	unstable at best, this is the best solution.
+	A X86Windows target is defined in the generator but it is not implemented.
+	Since a linker is needed for windows, you need to run this program from the native tools command prompt.
 */
 package main
 
