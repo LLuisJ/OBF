@@ -21,8 +21,10 @@ import "core:strings"
 
 
 Generator :: enum {
-	X64,
-	X86,
+	X64Linux,
+	X86Linux,
+	x64Windows,
+	x86Windows,
 	UNKNOWN,
 }
 
@@ -50,17 +52,27 @@ main :: proc() {
 	source_file := os.args[1]
 	run := false
 	keep_asm := false
-	when ODIN_OS != .Linux {
+	when ODIN_OS != .Linux && ODIN_OS != .Windows {
 		#panic("unsupported platform (only linux for now)")
 	}
 	arr_loop := make([dynamic]int, 0)
 	file := File{0, 0, arr_loop, nil, nil, .UNKNOWN}
-	when ODIN_ARCH == .amd64 {
-		file.gen = .X64
-	} else when ODIN_ARCH == .i386 {
-		file.gen = .X86
-	} else {
-		#panic("unsupported architecture")
+	when ODIN_OS == .Windows {
+		when ODIN_ARCH == .amd64 {
+			file.gen = .x64Windows
+		} else when ODIN_ARCH == .i386 {
+			file.gen = .x86Windows
+		} else {
+			#panic("unsupported architecture")
+		}
+	} else when ODIN_OS == .Linux {
+		when ODIN_ARCH == .amd64 {
+			file.gen = .X64Linux
+		} else when ODIN_ARCH == .i386 {
+			file.gen = .X86Linux
+		} else {
+			#panic("unsupported architecture")
+		}
 	}
 	if len(os.args) > 2 {
 		if slice.contains(os.args, "-r") {
@@ -69,13 +81,25 @@ main :: proc() {
 		if slice.contains(os.args, "-k") {
 			keep_asm = true
 		}
-		when ODIN_ARCH == .amd64 {
-			if slice.contains(os.args, "-32") {
-				file.gen = .X86
+		when ODIN_OS == .Windows {
+			when ODIN_ARCH == .amd64 {
+				if slice.contains(os.args, "-32") {
+					file.gen = .x86Windows
+				}
+			} else when ODIN_ARCH == .i386 {
+				if slice.contains(os.args, "-64") {
+					file.gen = .x64Windows
+				}
 			}
-		} else when ODIN_ARCH == .i386 {
-			if slice.contains(os.args, "-64") {
-				file.gen = .X64
+		} else when ODIN_OS == .Linux {
+			when ODIN_ARCH == .amd64 {
+				if slice.contains(os.args, "-32") {
+					file.gen = .X86Linux
+				}
+			} else when ODIN_ARCH == .i386 {
+				if slice.contains(os.args, "-64") {
+					file.gen = .X64Linux
+				}
 			}
 		}
 	}
@@ -106,7 +130,7 @@ main :: proc() {
 		fmt.println("error writing to file")
 		os.exit(1)
 	}
-	nasm_str := compile_cmd(&file, asm_file_path)
+	nasm_str := compile_cmd(asm_file_path)
 	if nasm_str != "" {
 		nasm_str_c := strings.clone_to_cstring(nasm_str)
 		defer delete(nasm_str)
@@ -119,7 +143,7 @@ main :: proc() {
 		fmt.println("got an empty compile string")
 		os.exit(1)
 	}
-	ld_str := link_cmd(&file, asm_file_name)
+	ld_str := link_cmd(asm_file_name)
 	if ld_str != "" {
 		ld_str_c := strings.clone_to_cstring(ld_str)
 		defer delete(ld_str)
@@ -182,100 +206,122 @@ main_loop :: proc(f: ^File) {
 
 write_right :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_right_x64(f)
-		case .X86:
-			write_right_x86(f)
+		case .X64Linux:
+			write_right_x64_linux(f)
+		case .X86Linux:
+			write_right_x86_linux(f)
+		case .x64Windows:
+			write_right_x64_windows(f)
 	}
 }
 
 write_left :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_left_x64(f)
-		case .X86:
-			write_left_x86(f)
+		case .X64Linux:
+			write_left_x64_linux(f)
+		case .X86Linux:
+			write_left_x86_linux(f)
+		case .x64Windows:
+			write_left_x64_windows(f)
 	}
 }
 
 write_input :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_input_x64(f)
-		case .X86:
-			write_input_x86(f)
+		case .X64Linux:
+			write_input_x64_linux(f)
+		case .X86Linux:
+			write_input_x86_linux(f)
+		case .x64Windows:
+			write_input_x64_windows(f)
 	}
 }
 
 write_output :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_output_x64(f)
-		case .X86:
-			write_output_x86(f)
+		case .X64Linux:
+			write_output_x64_linux(f)
+		case .X86Linux:
+			write_output_x86_linux(f)
+		case .x64Windows:
+			write_output_x64_windows(f)
 	}
 }
 
 write_add :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_add_x64(f)
-		case .X86:
-			write_add_x86(f)
+		case .X64Linux:
+			write_add_x64_linux(f)
+		case .X86Linux:
+			write_add_x86_linux(f)
+		case .x64Windows:
+			write_add_x64_windows(f)
 	}
 }
 
 write_sub :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_sub_x64(f)
-		case .X86:
-			write_sub_x86(f)
+		case .X64Linux:
+			write_sub_x64_linux(f)
+		case .X86Linux:
+			write_sub_x86_linux(f)
+		case .x64Windows:
+			write_sub_x64_windows(f)
 	}
 }
 
 write_loop_begin :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_loop_begin_x64(f)
-		case .X86:
-			write_loop_begin_x86(f)
+		case .X64Linux:
+			write_loop_begin_x64_linux(f)
+		case .X86Linux:
+			write_loop_begin_x86_linux(f)
+		case .x64Windows:
+			write_loop_end_x64_windows(f)
 	}
 }
 
 write_loop_end :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_loop_end_x64(f)
-		case .X86:
-			write_loop_end_x86(f)
+		case .X64Linux:
+			write_loop_end_x64_linux(f)
+		case .X86Linux:
+			write_loop_end_x86_linux(f)
+		case .x64Windows:
+			write_loop_end_x64_windows(f)
 	}
 }
 
 write_setup :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_setup_x64(f)
-		case .X86:
-			write_setup_x86(f)
+		case .X64Linux:
+			write_setup_x64_linux(f)
+		case .X86Linux:
+			write_setup_x86_linux(f)
+		case .x64Windows:
+			write_setup_x64_windows(f)
 	}
 }
 
 write_exit :: proc(f: ^File) {
 	#partial switch f.gen {
-		case .X64:
-			write_exit_x64(f)
-		case .X86:
-			write_exit_x86(f)
+		case .X64Linux:
+			write_exit_x64_linux(f)
+		case .X86Linux:
+			write_exit_x86_linux(f)
+		case .x64Windows:
+			write_exit_x64_windows(f)
 	}
 }
 
-compile_cmd :: proc(f: ^File, name: string) -> string {
+compile_cmd :: proc(name: string) -> string {
 	#partial switch f.gen {
-		case .X64:
-			return compile_cmd_x64(f, name)
-		case .X86:
-			return compile_cmd_x86(f, name)
+		case .X64Linux:
+			return compile_cmd_x64_linux(name)
+		case .X86Linux:
+			return compile_cmd_x86_linux(name)
+		case .x64Windows:
+			return compile_cmd_x64_windows(name)
 		case:
 			return ""
 	}
@@ -283,10 +329,12 @@ compile_cmd :: proc(f: ^File, name: string) -> string {
 
 link_cmd :: proc(f: ^File, name: string) -> string {
 	#partial switch f.gen {
-		case .X64:
-			return link_cmd_x64(f, name)
-		case .X86:
-			return link_cmd_x86(f, name)
+		case .X64Linux:
+			return link_cmd_x64_linux(name)
+		case .X86Linux:
+			return link_cmd_x86_linux(name)
+		case .x64Windows:
+			return link_cmd_x64_windows(name)
 		case:
 			return ""
 	}

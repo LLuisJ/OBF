@@ -3,7 +3,7 @@ package main
 import "core:fmt"
 import "core:runtime"
 
-write_right_x86 :: proc(f: ^File) {
+write_right_x86_linux :: proc(f: ^File) {
 	times := count(f, '>')
 	if times > 1 {
 		str := fmt.aprintf("\tadd ebx, %d\n", times)
@@ -14,7 +14,7 @@ write_right_x86 :: proc(f: ^File) {
 	}
 }
 
-write_left_x86 :: proc(f: ^File) {
+write_left_x86_linux :: proc(f: ^File) {
 	times := count(f, '<')
 	if times > 1 {
 		str := fmt.aprintf("\tsub ebx, %d\n", times)
@@ -25,17 +25,17 @@ write_left_x86 :: proc(f: ^File) {
 	}
 }
 
-write_input_x86 :: proc(f: ^File) {
+write_input_x86_linux :: proc(f: ^File) {
 	write(f, "\tcall _input\n")
 	f.index += 1
 }
 
-write_output_x86 :: proc(f: ^File) {
+write_output_x86_linux :: proc(f: ^File) {
 	write(f, "\tcall _output\n")
 	f.index += 1
 }
 
-write_add_x86 :: proc(f: ^File) {
+write_add_x86_linux :: proc(f: ^File) {
 	times := count(f, '+')
 	if times > 1 {
 		str := fmt.aprintf("\tadd byte [ebx], %d\n", times)
@@ -46,7 +46,7 @@ write_add_x86 :: proc(f: ^File) {
 	}
 }
 
-write_sub_x86 :: proc(f: ^File) {
+write_sub_x86_linux :: proc(f: ^File) {
 	times := count(f, '-')
 	if times > 1 {
 		str := fmt.aprintf("\tsub byte [ebx], %d\n", times)
@@ -57,7 +57,7 @@ write_sub_x86 :: proc(f: ^File) {
 	}
 }
 
-write_loop_begin_x86 :: proc(f: ^File) {
+write_loop_begin_x86_linux :: proc(f: ^File) {
 	str := fmt.aprintf(	"\tcmp byte [ebx], 0\n" + 
 						"\tje lb_end_%d\n" + 
 						"lb_start_%d:\n", f.loop, f.loop)
@@ -68,7 +68,7 @@ write_loop_begin_x86 :: proc(f: ^File) {
 	f.index += 1
 }
 
-write_loop_end_x86 :: proc(f: ^File) {
+write_loop_end_x86_linux :: proc(f: ^File) {
 	id := f.loop_arr[len(f.loop_arr)-1]
 	str := fmt.aprintf(	"\tcmp byte [ebx], 0\n" + 
 						"\tjne lb_start_%d\n" + 
@@ -80,7 +80,7 @@ write_loop_end_x86 :: proc(f: ^File) {
 	f.index += 1
 }
 
-write_setup_x86 :: proc(f: ^File) {
+write_setup_x86_linux :: proc(f: ^File) {
 	write(f, 	"BITS 32\n" + 
 				"global _start\n" + 
 				"SYS_READ 	equ 3\n" + 
@@ -119,7 +119,7 @@ write_setup_x86 :: proc(f: ^File) {
 				"\tmov ebx, buffer\n")
 }
 
-write_exit_x86 :: proc(f: ^File) {
+write_exit_x86_linux :: proc(f: ^File) {
 	write(f, 	"\tmov esp, ebp\n" + 
 				"\tpop ebp\n" + 
 				"\tmov eax, SYS_EXIT\n" + 
@@ -127,11 +127,14 @@ write_exit_x86 :: proc(f: ^File) {
 				"\tint 80h\n")
 }
 
-compile_cmd_x86 :: proc(f: ^File, name: string) -> string {
+compile_cmd_x86_linux :: proc(f: ^File, name: string) -> string {
 	return fmt.aprintf("nasm -felf %s", name)
 }
 
-link_cmd_x86 :: proc(f: ^File, name: string) -> string {
+link_cmd_x86_linux :: proc(f: ^File, name: string) -> string {
+	when ODIN_OS == .Windows {
+		return ""
+	}
 	when ODIN_ARCH == .i386 {
 		return fmt.aprintf("ld %s.o -o %s", name, name)
 	} else when ODIN_ARCH == .amd64 {

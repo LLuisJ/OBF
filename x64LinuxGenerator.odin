@@ -3,7 +3,7 @@ package main
 import "core:fmt"
 import "core:runtime"
 
-write_right_x64 :: proc(f: ^File) {
+write_right_x64_linux :: proc(f: ^File) {
 	times := count(f, '>')
 	if times > 1 {
 		str := fmt.aprintf("\tadd rbx, %d\n", times)
@@ -14,7 +14,7 @@ write_right_x64 :: proc(f: ^File) {
 	}
 }
 
-write_left_x64 :: proc(f: ^File) {
+write_left_x64_linux :: proc(f: ^File) {
 	times := count(f, '<')
 	if times > 1 {
 		str := fmt.aprintf("\tsub rbx, %d\n", times)
@@ -25,17 +25,17 @@ write_left_x64 :: proc(f: ^File) {
 	}
 }
 
-write_input_x64 :: proc(f: ^File) {
+write_input_x64_linux :: proc(f: ^File) {
 	write(f, "\tcall _input\n")
 	f.index += 1
 }
 
-write_output_x64 :: proc(f: ^File) {
+write_output_x64_linux :: proc(f: ^File) {
 	write(f, "\tcall _output\n")
 	f.index += 1
 }
 
-write_add_x64 :: proc(f: ^File) {
+write_add_x64_linux :: proc(f: ^File) {
 	times := count(f, '+')
 	if times > 1 {
 		str := fmt.aprintf("\tadd byte [rbx], %d\n", times)
@@ -46,7 +46,7 @@ write_add_x64 :: proc(f: ^File) {
 	}
 }
 
-write_sub_x64 :: proc(f: ^File) {
+write_sub_x64_linux :: proc(f: ^File) {
 	times := count(f, '-')
 	if times > 1 {
 		str := fmt.aprintf("\tsub byte [rbx], %d\n", times)
@@ -57,7 +57,7 @@ write_sub_x64 :: proc(f: ^File) {
 	}
 }
 
-write_loop_begin_x64 :: proc(f: ^File) {
+write_loop_begin_x64_linux :: proc(f: ^File) {
 	str := fmt.aprintf(	"\tcmp byte [rbx], 0\n" +
 						"\tje lb_end_%d\n" +
 						"lb_start_%d:\n", f.loop, f.loop)
@@ -68,7 +68,7 @@ write_loop_begin_x64 :: proc(f: ^File) {
 	f.index += 1
 }
 
-write_loop_end_x64 :: proc(f: ^File) {
+write_loop_end_x64_linux :: proc(f: ^File) {
 	id := f.loop_arr[len(f.loop_arr)-1]
 	str := fmt.aprintf(	"\tcmp byte [rbx], 0\n" + 
 						"\tjne lb_start_%d\n" + 
@@ -80,7 +80,7 @@ write_loop_end_x64 :: proc(f: ^File) {
 	f.index += 1
 }
 
-write_setup_x64 :: proc(f: ^File) {
+write_setup_x64_linux :: proc(f: ^File) {
 	write(f, 	"BITS 64\n" + 
 				"global _start\n" + 
 				"SYS_READ 	equ 0\n" + 
@@ -115,7 +115,7 @@ write_setup_x64 :: proc(f: ^File) {
 				"\tmov rbx, buffer\n")
 }
 
-write_exit_x64 :: proc(f: ^File) {
+write_exit_x64_linux :: proc(f: ^File) {
 	write(f, 	"\tmov rsp, rbp\n" +
 				"\tpop rbp\n" + 
 				"\tmov rax, SYS_EXIT\n" + 
@@ -123,11 +123,14 @@ write_exit_x64 :: proc(f: ^File) {
 				"\tsyscall\n")
 }
 
-compile_cmd_x64 :: proc(f: ^File, name: string) -> string {
+compile_cmd_x64_linux :: proc(name: string) -> string {
 	return fmt.aprintf("nasm -felf64 %s", name)
 }
 
-link_cmd_x64 :: proc(f: ^File, name: string) -> string {
+link_cmd_x64_linux :: proc(name: string) -> string {
+	when ODIN_OS == .Windows {
+		return ""
+	}
 	when ODIN_ARCH == .amd64 {
 		return fmt.aprintf("ld %s.o -o %s", name, name)
 	} else when ODIN_ARCH == .i386 {
