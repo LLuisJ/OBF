@@ -56,9 +56,9 @@ main :: proc() {
 	arr_loop := make([dynamic]int, 0)
 	file := File{0, 0, arr_loop, nil, nil, .UNKNOWN}
 	when ODIN_ARCH == .amd64 {
-		file.gen = Generator.X64
+		file.gen = .X64
 	} else when ODIN_ARCH == .i386 {
-		file.gen = Generator.X86
+		file.gen = .X86
 	} else {
 		#panic("unsupported architecture")
 	}
@@ -101,12 +101,11 @@ main :: proc() {
 	main_loop(&file)
 	write_exit(&file)
 	ok = os.write_entire_file(asm_file_path, transmute([]u8)strings.to_string(file.out^), true)
+	cleanup_file(&file)
 	if !ok {
-		cleanup_file(&file)
 		fmt.println("error writing to file")
 		os.exit(1)
 	}
-	cleanup_file(&file)
 	nasm_str := compile_cmd(&file, asm_file_path)
 	if nasm_str != "" {
 		nasm_str_c := strings.clone_to_cstring(nasm_str)
