@@ -132,7 +132,7 @@ compile_cmd_x86_linux :: proc(name: string) -> string {
 }
 
 link_cmd_x86_linux :: proc(name: string) -> string {
-	when ODIN_OS == .Windows {
+	when ODIN_OS != .Linux {
 		return ""
 	}
 	when ODIN_ARCH == .i386 {

@@ -149,7 +149,7 @@ compile_cmd_x64_windows :: proc(name: string) -> string {
 }
 
 link_cmd_x64_windows :: proc(name: string) -> string {
-	when ODIN_OS == .Linux {
+	when ODIN_OS != .Windows {
 		return ""
 	}
 	// The "/nologo" option is just to shut up the microsoft copyright notice they print every time.

@@ -128,7 +128,7 @@ compile_cmd_x64_linux :: proc(name: string) -> string {
 }
 
 link_cmd_x64_linux :: proc(name: string) -> string {
-	when ODIN_OS == .Windows {
+	when ODIN_OS != .Linux {
 		return ""
 	}
 	when ODIN_ARCH == .amd64 {

@@ -165,10 +165,14 @@ main :: proc() {
 	} else {
 		delete_o_file := fmt.aprintf("%s.obj", asm_file_name)
 	}
-	delete_o_file_c := strings.clone_to_cstring(delete_o_file)
 	defer delete(delete_o_file)
-	defer delete(delete_o_file_c)
-	_ = libc.remove(delete_o_file_c)
+	when ODIN_OS != .Windows {
+		delete_o_file_c := strings.clone_to_cstring(delete_o_file)
+		defer delete(delete_o_file_c)
+		_ = libc.remove(delete_o_file_c)
+	} else {
+		_ = os.unlink(delete_o_file)
+	}
 	if !keep_asm {
 		asm_file_path_c := strings.clone_to_cstring(asm_file_path)
 		defer delete(asm_file_path_c)
