@@ -27,8 +27,8 @@ import "core:strings"
 Generator :: enum {
 	X64Linux,
 	X86Linux,
-	x64Windows,
-	x86Windows,
+	X64Windows,
+	X86Windows,
 	UNKNOWN,
 }
 
@@ -50,7 +50,7 @@ main :: proc() {
 	*/
 	defer delete(os.args)
 	if len(os.args) < 2 || len(os.args) > 5 {
-		fmt.println("usage: obf <bf file> [-r (run) | -k (keep asm) | -32 (generate 32 bit asm)]")
+		fmt.println("usage: obf <bf file> [-r (run) | -k (keep asm) | (-32 (generate 32 bit asm) | -64 (generate 64 bit asm) (only works on linux))]")
 		os.exit(1)
 	}
 	source_file := os.args[1]
@@ -63,9 +63,9 @@ main :: proc() {
 	file := File{0, 0, arr_loop, nil, nil, .UNKNOWN}
 	when ODIN_OS == .Windows {
 		when ODIN_ARCH == .amd64 {
-			file.gen = .x64Windows
+			file.gen = .X64Windows
 		} else when ODIN_ARCH == .i386 {
-			file.gen = .x86Windows
+			file.gen = .X86Windows
 		} else {
 			#panic("unsupported architecture")
 		}
@@ -78,6 +78,27 @@ main :: proc() {
 			#panic("unsupported architecture")
 		}
 	}
+	when ODIN_OS == .Windows {
+		envs := os.environ()
+		defer delete(envs)
+		is_dev_env := false
+		for i := 0; i < len(envs); i += 1 {
+			env := envs[i]
+			if len(env) > 18 && env[:19] == "VSCMD_ARG_HOST_ARCH" {
+				is_dev_env = true
+				if env[len(env)-3:] == "x64" {
+					file.gen = .X64Windows
+				} else if env[len(env)-3:] == "x86" {
+					file.gen = .X86Windows
+				}
+				break
+			}
+		}
+		if !is_dev_env {
+			fmt.println("please run obf from a native tools command prompt (or set up the environment manually)")
+			os.exit(1)
+		}
+	}
 	if len(os.args) > 2 {
 		if slice.contains(os.args, "-r") {
 			run = true
@@ -85,17 +106,7 @@ main :: proc() {
 		if slice.contains(os.args, "-k") {
 			keep_asm = true
 		}
-		when ODIN_OS == .Windows {
-			when ODIN_ARCH == .amd64 {
-				if slice.contains(os.args, "-32") {
-					file.gen = .x86Windows
-				}
-			} else when ODIN_ARCH == .i386 {
-				if slice.contains(os.args, "-64") {
-					file.gen = .x64Windows
-				}
-			}
-		} else when ODIN_OS == .Linux {
+		when ODIN_OS == .Linux {
 			when ODIN_ARCH == .amd64 {
 				if slice.contains(os.args, "-32") {
 					file.gen = .X86Linux
@@ -226,8 +237,10 @@ write_right :: proc(f: ^File) {
 			write_right_x64_linux(f)
 		case .X86Linux:
 			write_right_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_right_x64_windows(f)
+		case .X86Windows:
+			write_right_x86_windows(f)
 	}
 }
 
@@ -237,8 +250,10 @@ write_left :: proc(f: ^File) {
 			write_left_x64_linux(f)
 		case .X86Linux:
 			write_left_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_left_x64_windows(f)
+		case .X86Windows:
+			write_left_x86_windows(f)
 	}
 }
 
@@ -248,8 +263,10 @@ write_input :: proc(f: ^File) {
 			write_input_x64_linux(f)
 		case .X86Linux:
 			write_input_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_input_x64_windows(f)
+		case .X86Windows:
+			write_input_x86_windows(f)
 	}
 }
 
@@ -259,8 +276,10 @@ write_output :: proc(f: ^File) {
 			write_output_x64_linux(f)
 		case .X86Linux:
 			write_output_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_output_x64_windows(f)
+		case .X86Windows:
+			write_output_x86_windows(f)
 	}
 }
 
@@ -270,8 +289,10 @@ write_add :: proc(f: ^File) {
 			write_add_x64_linux(f)
 		case .X86Linux:
 			write_add_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_add_x64_windows(f)
+		case .X86Windows:
+			write_add_x86_windows(f)
 	}
 }
 
@@ -281,8 +302,10 @@ write_sub :: proc(f: ^File) {
 			write_sub_x64_linux(f)
 		case .X86Linux:
 			write_sub_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_sub_x64_windows(f)
+		case .X86Windows:
+			write_sub_x86_windows(f)
 	}
 }
 
@@ -292,8 +315,10 @@ write_loop_begin :: proc(f: ^File) {
 			write_loop_begin_x64_linux(f)
 		case .X86Linux:
 			write_loop_begin_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_loop_begin_x64_windows(f)
+		case .X86Windows:
+			write_loop_begin_x86_windows(f)
 	}
 }
 
@@ -303,8 +328,10 @@ write_loop_end :: proc(f: ^File) {
 			write_loop_end_x64_linux(f)
 		case .X86Linux:
 			write_loop_end_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_loop_end_x64_windows(f)
+		case .X86Windows:
+			write_loop_end_x86_windows(f)
 	}
 }
 
@@ -314,8 +341,10 @@ write_setup :: proc(f: ^File) {
 			write_setup_x64_linux(f)
 		case .X86Linux:
 			write_setup_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_setup_x64_windows(f)
+		case .X86Windows:
+			write_setup_x86_windows(f)
 	}
 }
 
@@ -325,8 +354,10 @@ write_exit :: proc(f: ^File) {
 			write_exit_x64_linux(f)
 		case .X86Linux:
 			write_exit_x86_linux(f)
-		case .x64Windows:
+		case .X64Windows:
 			write_exit_x64_windows(f)
+		case .X86Windows:
+			write_exit_x86_windows(f)
 	}
 }
 
@@ -336,8 +367,10 @@ compile_cmd :: proc(f: ^File, name: string) -> string {
 			return compile_cmd_x64_linux(name)
 		case .X86Linux:
 			return compile_cmd_x86_linux(name)
-		case .x64Windows:
+		case .X64Windows:
 			return compile_cmd_x64_windows(name)
+		case .X86Windows:
+			return compile_cmd_x86_windows(name)
 		case:
 			return ""
 	}
@@ -349,8 +382,10 @@ link_cmd :: proc(f: ^File, name: string) -> string {
 			return link_cmd_x64_linux(name)
 		case .X86Linux:
 			return link_cmd_x86_linux(name)
-		case .x64Windows:
+		case .X64Windows:
 			return link_cmd_x64_windows(name)
+		case .X86Windows:
+			return link_cmd_x86_windows(name)
 		case:
 			return ""
 	}

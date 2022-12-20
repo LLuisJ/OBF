@@ -153,5 +153,5 @@ link_cmd_x64_windows :: proc(name: string) -> string {
 		return ""
 	}
 	// The "/nologo" option is just to shut up the microsoft copyright notice they print every time.
-	return fmt.aprintf("link /subsystem:console /nologo /nodefaultlib /entry:_main %s kernel32.Lib", name)
+	return fmt.aprintf("link /subsystem:console /nologo /nodefaultlib /entry:_main %s kernel32.Lib", name)	
 }
