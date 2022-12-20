@@ -127,7 +127,11 @@ write_setup_x86_windows :: proc(f: ^File) {
 }
 
 write_exit_x86_windows :: proc(f: ^File) {
-	write(f, 	"\tmov esp, ebp\n" + 
+	write(f, 	"\tpush dword [out_handle]\n" + 
+				"\tcall _CloseHandle@4\n" + 
+				"\tpush dword [in_handle]\n" + 
+				"\tcall _CloseHandle@4\n" + 
+				"\tmov esp, ebp\n" + 
 				"\tpop ebp\n" +  
 				"\tpush 0\n" + 
 				"\tcall _ExitProcess@4\n")
