@@ -49,7 +49,11 @@ main :: proc() {
 	*/
 	defer delete(os.args)
 	if len(os.args) < 2 || len(os.args) > 5 {
-		fmt.println("usage: obf <bf file> [-r (run) | -k (keep asm) | (-32 (generate 32 bit asm) | -64 (generate 64 bit asm) (only works on linux))]")
+		when ODIN_OS != .Windows {
+			fmt.println("usage: obf <bf file> [-r (run) | -k (keep asm) | (-32 (generate 32 bit asm) | -64 (generate 64 bit asm) (only works on linux))]")
+		} else {
+			fmt.println("usage: obf.exe <bf file> [-r (run) | -k (keep asm)]")
+		}
 		os.exit(1)
 	}
 	source_file := os.args[1]
