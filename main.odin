@@ -326,15 +326,21 @@ write_loop_begin :: proc(f: ^File) {
 }
 
 write_loop_end :: proc(f: ^File) {
+	shrink := true
 	#partial switch f.gen {
 		case .X64Linux:
-			write_loop_end_x64_linux(f)
+			shrink = write_loop_end_x64_linux(f)
 		case .X86Linux:
-			write_loop_end_x86_linux(f)
+			shrink = write_loop_end_x86_linux(f)
 		case .X64Windows:
-			write_loop_end_x64_windows(f)
+			shrink = write_loop_end_x64_windows(f)
 		case .X86Windows:
-			write_loop_end_x86_windows(f)
+			shrink = write_loop_end_x86_windows(f)
+	}
+	if !shrink {
+		cleanup_file(f)
+		fmt.println("error shrinking loop array")
+		os.exit(1)
 	}
 }
 
