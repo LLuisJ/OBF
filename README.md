@@ -47,5 +47,3 @@ Big thanks to http://brainfuck.org/ for some of the examples in the examples fol
 
 Btw: BIG thanks to Tsoding for making all those videos about his development of the porth language, since it helped me a lot in understanding assembly
 and compilers in general.
-
-Tsoding Daily Porth Playlist: [Youtube](https://www.youtube.com/playlist?list=PLpM-Dvs8t0VbMZA7wW9aR3EtBqe2kinu4)
