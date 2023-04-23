@@ -6,7 +6,7 @@
 	The program calls:
 		- nasm -felf64 <name>.asm | nasm -felf <name>.asm | nasm -fwin64 <name>.asm | nasm -fwin32 <name>.asm
 		- ld <name>.o -o <name> | link /subsystem:console /nologo /nodefaultlib /entry:_main <name>.obj kernel32.Lib | link /subsystem:console /nologo /nodefaultlib /entry:main <name>.obj kernel32.Lib (for 32 bit)
-	For now this only works on x86/x64 linux (win x86/x64 support is experimental).
+	For now this works on x86/x64 win32 and x86/x64 linux.
 	As far as i can see, this doesn't depend on any library since it uses syscalls for input/output.
 	On windows the only dependency is kernel32.dll but since it is always available (AFAIK) and windows syscalls are
 	unstable at best, this is the best solution.
