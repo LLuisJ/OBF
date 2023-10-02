@@ -76,7 +76,8 @@ write_loop_end_x86_linux :: proc(f: ^File) -> bool {
 	defer delete(str)
 	write(f, str)
 	f.index += 1
-	return shrink(&f.loop_arr, len(f.loop_arr)-1)
+	ok, _ := shrink(&f.loop_arr, len(f.loop_arr)-1)
+	return ok
 }
 
 write_setup_x86_linux :: proc(f: ^File) {
