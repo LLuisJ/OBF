@@ -91,6 +91,8 @@ write_setup_x64_windows :: proc(f: ^File) {
 				"\tbuffer times 30000 db 0\n" + 
 				"\tout_handle dq 0\n" +
 				"\tin_handle dq 0\n" + 
+				"\toutbuffer times 8192 db 0\n" +
+				"\toutbuffer_len dd 0\n" +
 				"section .bss\n" + 
 				"\tinput: resb 3\n" +
 				"\tread: resb 4\n" + 
@@ -98,6 +100,7 @@ write_setup_x64_windows :: proc(f: ^File) {
 				"section .text\n" + 
 				"_input:\n" +
 				"\tsub rsp, 40\n" + 
+				"\tcall _print\n" +
 				"\tmov rcx, [in_handle]\n" + 
 				"\tmov rdx, input\n" + 
 				"\tmov r8, 1\n" + 
@@ -109,11 +112,30 @@ write_setup_x64_windows :: proc(f: ^File) {
 				"\tret\n" + 
 				"_output:\n" + 
 				"\tsub rsp, 40\n" +
+				"\tmov rax, outbuffer\n" +
+				"\tadd rax, [outbuffer_len]\n" +
+				"\tmov cl, byte [rbx]\n" +
+				"\tmov byte [rax], cl\n" +
+				"\tinc dword [outbuffer_len]\n" +
+				"\tcmp dword [outbuffer_len], 8192\n" +
+				"\tjne .newline\n" +
+				"\tcall _print\n" +
+				"\tjmp .return\n" +
+				"\t.newline:\n" +
+				"\tcmp cl, 10\n" +
+				"\tjne .return\n" +
+				"\tcall _print\n" +
+				"\t.return:\n" +
+				"\tadd rsp, 40\n" +
+				"\tret\n" +
+				"_print:\n" +
+				"\tsub rsp, 40\n" +
 				"\tmov rcx, [out_handle]\n" + 
-				"\tmov rdx, rbx\n" + 
-				"\tmov r8, 1\n" + 
+				"\tmov rdx, outbuffer\n" + 
+				"\tmov r8, [outbuffer_len]\n" + 
 				"\tmov r9, written\n" + 
 				"\tcall WriteConsoleA\n" +
+				"\tmov dword [outbuffer_len], 0\n" +
 				"\tadd rsp, 40\n" +
 				"\tret\n" +
 				"_main:\n" + 
@@ -133,7 +155,8 @@ write_setup_x64_windows :: proc(f: ^File) {
 }
 
 write_exit_x64_windows :: proc(f: ^File) {
-	write(f, 	"\tmov rcx, [out_handle]\n" + 
+	write(f, 	"\tcall _print\n" +
+				"\tmov rcx, [out_handle]\n" + 
 				"\tcall CloseHandle\n" + 
 				"\tmov rcx, [in_handle]\n" + 
 				"\tcall CloseHandle\n" + 

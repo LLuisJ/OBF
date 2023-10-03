@@ -91,12 +91,15 @@ write_setup_x86_windows :: proc(f: ^File) {
 				"\tbuffer times 30000 db 0\n" + 
 				"\tout_handle dd 0\n" + 
 				"\tin_handle dd 0\n" + 
+				"\toutbuffer times 8192 db 0\n" +
+				"\toutbuffer_len dd 0\n" +
 				"section .bss\n" + 
 				"\tinput: resb 3\n" + 
 				"\tread: resb 4\n" + 
 				"\twritten: resb 4\n" + 
 				"section .text\n" + 
 				"_input:\n" + 
+				"\tcall _print\n" +
 				"\tpush 0\n" + 
 				"\tpush read\n" + 
 				"\tpush 1\n" + 
@@ -106,11 +109,27 @@ write_setup_x86_windows :: proc(f: ^File) {
 				"\tmov al, byte [input]\n" + 
 				"\tmov byte [ebx], al\n" + 
 				"\tret\n" + 
-				"_output:\n" + 
+				"_output:\n" +
+				"\tmov eax, outbuffer\n" +
+				"\tadd eax, [outbuffer_len]\n" +
+				"\tmov cl, byte [ebx]\n" +
+				"\tmov byte [eax], cl\n" +
+				"\tinc dword [outbuffer_len]\n" +
+				"\tcmp dword [outbuffer_len], 8192\n" +
+				"\tjne .newline\n" +
+				"\tcall _print\n" +
+				"\tjmp .return\n" +
+				"\t.newline:\n" + 
+				"\tcmp cl, 10\n" +
+				"\tjne .return\n" +
+				"\tcall _print\n" +
+				"\t.return:\n" +
+				"\tret\n" +
+				"_print:\n" + 
 				"\tpush 0\n" + 
 				"\tpush written\n" + 
-				"\tpush 1\n" + 
-				"\tpush ebx\n" + 
+				"\tpush dword [outbuffer_len]\n" + 
+				"\tpush outbuffer\n" + 
 				"\tpush dword [out_handle]\n" + 
 				"\tcall _WriteConsoleA@20\n" + 
 				"\tret\n" + 
@@ -127,7 +146,8 @@ write_setup_x86_windows :: proc(f: ^File) {
 }
 
 write_exit_x86_windows :: proc(f: ^File) {
-	write(f, 	"\tpush dword [out_handle]\n" + 
+	write(f, 	"\tcall _print\n" +
+				"\tpush dword [out_handle]\n" + 
 				"\tcall _CloseHandle@4\n" + 
 				"\tpush dword [in_handle]\n" + 
 				"\tcall _CloseHandle@4\n" + 
