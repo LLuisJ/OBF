@@ -90,10 +90,13 @@ write_setup_x86_linux :: proc(f: ^File) {
 				"STDOUT		equ 1\n" + 
 				"section .data\n" + 
 				"\tbuffer times 30000 db 0\n" + 
+				"\toutbuffer times 8192 db 0\n" +
+				"\toutbuffer_len dd 0\n" +
 				"section .bss\n" + 
 				"\tinput: resb 2\n" + 
 				"section .text\n" + 
 				"_input:\n" +
+				"\tcall _print\n" +
 				"\tpush ebx\n" +
 				"\tmov eax, SYS_READ\n" + 
 				"\tmov ebx, STDIN\n" + 
@@ -105,13 +108,30 @@ write_setup_x86_linux :: proc(f: ^File) {
 				"\tmov byte[ebx], al\n" + 
 				"\tret\n" + 
 				"_output:\n" +
+				"\tmov eax, outbuffer\n" +
+				"\tadd eax, [outbuffer_len]\n" +
+				"\tmov cl, byte [ebx]\n" +
+				"\tmov byte [eax], cl\n" +
+				"\tinc dword [outbuffer_len]\n" +
+				"\tcmp dword [outbuffer_len], 8192\n" +
+				"\tjne .newline\n" +
+				"\tcall _print\n" +
+				"\tjmp .return\n" +
+				"\t.newline:\n" +
+				"\tcmp cl, 10\n" +
+				"\tjne .return\n" +
+				"\tcall _print\n" +
+				"\t.return:\n" +
+				"\tret\n" +
+				"_print:\n" +
 				"\tpush ebx\n" +
 				"\tmov eax, SYS_WRITE\n" + 
-				"\tmov ecx, ebx\n" + 
+				"\tmov ecx, outbuffer\n" + 
 				"\tmov ebx, STDOUT\n" + 
-				"\tmov edx, 1\n" + 
+				"\tmov edx, [outbuffer_len]\n" + 
 				"\tint 80h\n" +
-				"\tpop ebx\n" + 
+				"\tpop ebx\n" +
+				"\tmov dword [outbuffer_len], 0\n" + 
 				"\tret\n" + 
 				"_start:\n" + 
 				"\tpush ebp\n" + 

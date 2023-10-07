@@ -89,11 +89,14 @@ write_setup_x64_linux :: proc(f: ^File) {
 				"STDIN		equ 0\n" + 
 				"STDOUT		equ 1\n" + 
 				"section .data\n" + 
-				"	buffer times 30000 db 0\n" + 
+				"\tbuffer times 30000 db 0\n" + 
+				"\toutbuffer times 8192 db 0\n" +
+				"\toutbuffer_len dd 0\n" +
 				"section .bss\n" + 
-				"	input: resb 2\n" + 
+				"\tinput: resb 2\n" + 
 				"section .text\n" + 
 				"_input:\n" +
+				"\tcall _print\n" +
 				"\tmov rax, SYS_READ\n" + 
 				"\tmov rdi, STDIN\n" + 
 				"\tmov rsi, input\n" + 
@@ -103,11 +106,28 @@ write_setup_x64_linux :: proc(f: ^File) {
 				"\tmov byte[rbx], al\n" + 
 				"\tret\n" + 
 				"_output:\n" +
+				"\tmov rax, outbuffer\n" +
+				"\tadd rax, [outbuffer_len]\n" +
+				"\tmov cl, byte [rbx]\n" +
+				"\tmov byte [rax], cl\n" +
+				"\tinc dword [outbuffer_len]\n" +
+				"\tcmp dword [outbuffer_len], 8192\n" +
+				"\tjne .newline\n" +
+				"\tcall _print\n" +
+				"\tjmp .return\n" +
+				"\t.newline:\n" +
+				"\tcmp cl, 10\n" +
+				"\tjne .return\n" +
+				"\tcall _print\n" +
+				"\t.return:\n" +
+				"\tret\n" +
+				"_print:\n" +
 				"\tmov rax, SYS_WRITE\n" + 
 				"\tmov rdi, STDOUT\n" + 
-				"\tmov rsi, rbx\n" + 
-				"\tmov rdx, 1\n" + 
+				"\tmov rsi, outbuffer\n" + 
+				"\tmov rdx, [outbuffer_len]\n" + 
 				"\tsyscall\n" + 
+				"\tmov dword [outbuffer_len], 0\n" +
 				"\tret\n" + 
 				"_start:\n" + 
 				"\tpush rbp\n" + 
