@@ -68,16 +68,14 @@ write_loop_begin_x64_windows :: proc(f: ^File) {
 	f.index += 1
 }
 
-write_loop_end_x64_windows :: proc(f: ^File) -> bool {
-	id := f.loop_arr[len(f.loop_arr)-1]
+write_loop_end_x64_windows :: proc(f: ^File) {
+	id := pop(&f.loop_arr)
 	str := fmt.aprintf(	"\tcmp byte [rbx], 0\n" + 
 						"\tjne lb_start_%d\n" + 
 						"lb_end_%d:\n", id, id)
 	defer delete(str)
 	write(f, str)
 	f.index += 1
-	ok, _ := shrink(&f.loop_arr, len(f.loop_arr)-1)
-	return ok
 }
 
 write_setup_x64_windows :: proc(f: ^File) {
