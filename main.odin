@@ -110,14 +110,15 @@ main :: proc() {
 			keep_asm = true
 		}
 		when ODIN_OS == .Linux {
-			when ODIN_ARCH == .amd64 {
-				if slice.contains(os.args, "-32") {
-					file.gen = .X86Linux
-				}
-			} else when ODIN_ARCH == .i386 {
-				if slice.contains(os.args, "-64") {
-					file.gen = .X64Linux
-				}
+			if slice.contains(os.args, "-32") {
+				file.gen = .X86Linux
+			} else if slice.contains(os.args, "-64") {
+				file.gen = .X64Linux
+			}
+		}
+		when ODIN_OS == .Windows {
+			if slice.contains(os.args, "-32") || slice.contains(os.args, "-64") {
+				fmt.println("-32/-64 does not do anything on windows")
 			}
 		}
 	}
