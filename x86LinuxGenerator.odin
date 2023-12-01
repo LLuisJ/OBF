@@ -138,7 +138,8 @@ write_setup_x86_linux :: proc(f: ^File) {
 }
 
 write_exit_x86_linux :: proc(f: ^File) {
-	write(f, 	"\tmov esp, ebp\n" + 
+	write(f, 	"\tcall _print\n" +
+				"\tmov esp, ebp\n" + 
 				"\tpop ebp\n" + 
 				"\tmov eax, SYS_EXIT\n" + 
 				"\tmov ebx, 0\n" + 

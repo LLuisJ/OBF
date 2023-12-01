@@ -134,7 +134,8 @@ write_setup_x64_linux :: proc(f: ^File) {
 }
 
 write_exit_x64_linux :: proc(f: ^File) {
-	write(f, 	"\tmov rsp, rbp\n" +
+	write(f, 	"\tcall _print\n" +
+				"\tmov rsp, rbp\n" +
 				"\tpop rbp\n" + 
 				"\tmov rax, SYS_EXIT\n" + 
 				"\tmov rdi, 0\n" + 
